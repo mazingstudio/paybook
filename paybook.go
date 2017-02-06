@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -196,7 +195,6 @@ func (c *Client) get(endpoint string, params url.Values, dest interface{}) error
 	if err != nil {
 		return err
 	}
-	log.Printf("%v, got: %v", endpoint, string(out))
 
 	if err := json.Unmarshal(out, dest); err != nil {
 		return err
@@ -220,7 +218,6 @@ func (c *Client) post(endpoint string, data interface{}, dest interface{}) error
 	if err != nil {
 		return err
 	}
-	log.Printf("got: %v", string(out))
 
 	if err := json.Unmarshal(out, dest); err != nil {
 		return err
