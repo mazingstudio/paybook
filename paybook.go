@@ -39,10 +39,49 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type asset string
+
+func (a *asset) UnmarshalJSON(data []byte) error {
+	s := string(data)
+	if s == "" {
+		return nil
+	}
+	var assetURL string
+	if err := json.Unmarshal(data, &assetURL); err != nil {
+		return err
+	}
+	*a = asset(staticPrefix + assetURL)
+	return nil
+}
+
 type Account struct {
 }
 
+type Attachment struct {
+	IDAttachment     string `json:"id_attachment"`
+	IDAttachmentType string `json:"id_attachment_type"`
+	IsValid          int    `json:"is_valid"`
+	File             string `json:"file"`
+	MIME             string `json:"mime"`
+	URL              asset  `json:"url"`
+}
+
 type Transaction struct {
+	IDTransaction          string       `json:"id_transaction"`
+	IDUser                 string       `json:"id_user"`
+	IDSite                 string       `json:"id_site"`
+	IDSiteOrganization     string       `json:"id_site_organization"`
+	IDSiteOrganizationType string       `json:"id_site_organization_type"`
+	IDAccount              string       `json:"id_account"`
+	IDAccountType          string       `json:"id_account_type"`
+	IDCurrency             string       `json:"id_currency"`
+	IsDisable              int          `json:"is_disable"`
+	Amount                 float64      `json:"amount"`
+	Currency               string       `json:"string"`
+	Attachments            []Attachment `json:"attachments"`
+	CreatedAt              *Time        `json:"dt_transaction"`
+	RefresedAt             *Time        `json:"dt_refresh"`
+	Description            string       `json:"description"`
 }
 
 type SiteOrganization struct {
@@ -50,9 +89,9 @@ type SiteOrganization struct {
 	IDSiteOrganizationType string `json:"id_site_organization_type"`
 	IDCountry              string `json:"id_country"`
 	Name                   string `json:"name"`
-	Avatar                 string `json:"avatar"`
-	SmallCover             string `json:"small_cover"`
-	Cover                  string `json:"cover"`
+	Avatar                 asset  `json:"avatar"`
+	SmallCover             asset  `json:"small_cover"`
+	Cover                  asset  `json:"cover"`
 }
 
 type StatusCode struct {
@@ -61,6 +100,7 @@ type StatusCode struct {
 
 type CredentialRequest struct {
 	IDSite      string            `json:"id_site"`
+	IDUser      string            `json:"id_user"`
 	Credentials map[string]string `json:"credentials"`
 	Token       string            `json:"token"`
 }
@@ -132,7 +172,7 @@ func (c *Client) CreateUser(user *User) (*User, error) {
 		Response *User `json:"response,omitempty"`
 	}{}
 
-	err := c.post("/users", user, &res)
+	err := c.post("/users", nil, user, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +190,7 @@ func (c *Client) CreateSession(user *User) (*Session, error) {
 		Response *Session `json:"response,omitempty"`
 	}{}
 
-	err := c.post("/sessions", user, &res)
+	err := c.post("/sessions", nil, user, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -216,13 +256,31 @@ func (c *Client) Status(statusURL string, params url.Values) (StatusCodes, error
 	return res.Response, nil
 }
 
+func (c *Client) ValidToken(token string) (bool, error) {
+	res := struct {
+		Envelope
+		Response bool `json:"response,omitempty"`
+	}{}
+
+	err := c.get("/sessions/"+token+"/verify", nil, &res)
+	if err != nil {
+		return false, err
+	}
+
+	if !res.Status {
+		return false, errors.New(*res.Message)
+	}
+
+	return res.Response, nil
+}
+
 func (c *Client) CreateCredential(user *CredentialRequest) (*AccountCredential, error) {
 	res := struct {
 		Envelope
 		Response *AccountCredential `json:"response,omitempty"`
 	}{}
 
-	err := c.post("/credentials", user, &res)
+	err := c.post("/credentials", nil, user, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -282,12 +340,12 @@ func (c *Client) get(endpoint string, params url.Values, dest interface{}) error
 	return nil
 }
 
-func (c *Client) post(endpoint string, data interface{}, dest interface{}) error {
+func (c *Client) post(endpoint string, params url.Values, data interface{}, dest interface{}) error {
 	buf, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	res, err := c.httpClient.Post(c.signEndpoint(endpoint, nil), "application/json", bytes.NewBuffer(buf))
+	res, err := c.httpClient.Post(c.signEndpoint(endpoint, params), "application/json", bytes.NewBuffer(buf))
 	if err != nil {
 		return err
 	}
@@ -297,6 +355,7 @@ func (c *Client) post(endpoint string, data interface{}, dest interface{}) error
 	if err != nil {
 		return err
 	}
+	log.Printf("GOT (%v): %v", endpoint, string(out))
 
 	if err := json.Unmarshal(out, dest); err != nil {
 		return err
@@ -326,8 +385,4 @@ func (c *Client) signEndpoint(endpoint string, params url.Values) string {
 
 	uri.RawQuery = params.Encode()
 	return uri.String()
-}
-
-func AssetURL(name string) string {
-	return staticPrefix + name
 }

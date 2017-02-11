@@ -49,6 +49,14 @@ func TestCreateSession(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, session)
 	t.Logf("Session: %#v", session)
+
+	valid, err := client.ValidToken(session.Token)
+	assert.NoError(t, err)
+	assert.True(t, valid)
+
+	valid, err = client.ValidToken("WAKA")
+	assert.Error(t, err)
+	assert.False(t, valid)
 }
 
 func TestGetSiteOrganizations(t *testing.T) {
