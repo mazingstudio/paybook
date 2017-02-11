@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -50,6 +51,13 @@ func TestCreateSession(t *testing.T) {
 	t.Logf("Session: %#v", session)
 }
 
+func TestGetSiteOrganizations(t *testing.T) {
+	sites, err := client.SiteOrganizations()
+	assert.NoError(t, err)
+	assert.NotNil(t, sites)
+	t.Logf("Sites: %v", sites)
+}
+
 func TestGetCatalogues(t *testing.T) {
 	catalogues, err := client.Catalogues(nil)
 	assert.NoError(t, err)
@@ -76,7 +84,7 @@ func TestCredentials(t *testing.T) {
 		credentials := map[string]string{}
 		for _, cred := range catalogue.Credentials {
 			if cred.Required {
-				credentials[cred.Name] = cred.Name
+				credentials[cred.Name] = "test"
 			}
 		}
 
@@ -90,9 +98,22 @@ func TestCredentials(t *testing.T) {
 
 		t.Logf("New credential: %#v", credential)
 
+		time.Sleep(time.Second * 5)
 		status, err := client.Status(credential.Status, url.Values{"token": {session.Token}})
 		assert.NoError(t, err)
 		t.Logf("New status: %#v", status)
+
+		if status.Last() == 200 {
+			accounts, err := client.Accounts(url.Values{"token": {session.Token}})
+			assert.NoError(t, err)
+
+			t.Logf("accounts: %#v", accounts)
+
+			transactions, err := client.Transactions(url.Values{"token": {session.Token}})
+			assert.NoError(t, err)
+
+			t.Logf("transactions: %#v", transactions)
+		}
 
 		assert.NotEqual(t, 0, len(status))
 	}

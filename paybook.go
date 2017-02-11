@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -13,10 +14,21 @@ import (
 )
 
 const (
-	apiPrefix = "https://sync.paybook.com/v1"
+	apiPrefix    = "https://sync.paybook.com/v1"
+	staticPrefix = "https://s.paybook.com"
 )
 
 type Time time.Time
+
+type StatusCodes []StatusCode
+
+func (sc StatusCodes) Last() int {
+	v := []StatusCode(sc)
+	if len(v) < 1 {
+		return 1
+	}
+	return v[len(v)-1].Code
+}
 
 func (t *Time) UnmarshalJSON(data []byte) error {
 	ut, err := strconv.ParseInt(string(data), 10, 64)
@@ -25,6 +37,22 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 	}
 	*t = Time(time.Unix(ut, 0))
 	return nil
+}
+
+type Account struct {
+}
+
+type Transaction struct {
+}
+
+type SiteOrganization struct {
+	IDSiteOrganization     string `json:"id_site_organization"`
+	IDSiteOrganizationType string `json:"id_site_organization_type"`
+	IDCountry              string `json:"id_country"`
+	Name                   string `json:"name"`
+	Avatar                 string `json:"avatar"`
+	SmallCover             string `json:"small_cover"`
+	Cover                  string `json:"cover"`
 }
 
 type StatusCode struct {
@@ -134,10 +162,46 @@ func (c *Client) CreateSession(user *User) (*Session, error) {
 	return res.Response, nil
 }
 
-func (c *Client) Status(statusURL string, params url.Values) ([]StatusCode, error) {
+func (c *Client) Transactions(params url.Values) ([]Transaction, error) {
 	res := struct {
 		Envelope
-		Response []StatusCode `json:"response,omitempty"`
+		Response []Transaction `json:"response,omitempty"`
+	}{}
+
+	err := c.get("/transactions", params, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	if !res.Status {
+		return nil, errors.New(*res.Message)
+	}
+
+	return res.Response, nil
+}
+
+func (c *Client) Accounts(params url.Values) ([]Account, error) {
+	res := struct {
+		Envelope
+		Response []Account `json:"response,omitempty"`
+	}{}
+
+	err := c.get("/accounts", params, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	if !res.Status {
+		return nil, errors.New(*res.Message)
+	}
+
+	return res.Response, nil
+}
+
+func (c *Client) Status(statusURL string, params url.Values) (StatusCodes, error) {
+	res := struct {
+		Envelope
+		Response StatusCodes `json:"response,omitempty"`
 	}{}
 
 	err := c.get(statusURL, params, &res)
@@ -170,6 +234,20 @@ func (c *Client) CreateCredential(user *CredentialRequest) (*AccountCredential, 
 	return res.Response, nil
 }
 
+func (c *Client) SiteOrganizations() ([]SiteOrganization, error) {
+	res := struct {
+		Envelope
+		Response []SiteOrganization `json:"response,omitempty"`
+	}{}
+
+	err := c.get("/catalogues/site_organizations", nil, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Response, nil
+}
+
 func (c *Client) Catalogues(params url.Values) ([]Catalogue, error) {
 	res := struct {
 		Envelope
@@ -195,6 +273,7 @@ func (c *Client) get(endpoint string, params url.Values, dest interface{}) error
 	if err != nil {
 		return err
 	}
+	log.Printf("GOT (%v): %v", endpoint, string(out))
 
 	if err := json.Unmarshal(out, dest); err != nil {
 		return err
@@ -247,4 +326,8 @@ func (c *Client) signEndpoint(endpoint string, params url.Values) string {
 
 	uri.RawQuery = params.Encode()
 	return uri.String()
+}
+
+func AssetURL(name string) string {
+	return staticPrefix + name
 }
