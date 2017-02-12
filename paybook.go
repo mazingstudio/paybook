@@ -55,6 +55,22 @@ func (a *asset) UnmarshalJSON(data []byte) error {
 }
 
 type Account struct {
+	AccountType string  `json:"account_type"`
+	Balance     float64 `json:"balance"`
+	Currency    string  `json:"currency"`
+	RefreshedAt *Time   `json:"dt_refresh"`
+	//Extra              interface{}      `json:"extra"`
+	IDAccount     string `json:"id_account"`
+	IDAccountType string `json:"id_account_type"`
+	IDCredential  string `json:"id_credential"`
+	//IDExternal         interface{}      `json:"id_external"`
+	IDSite             string           `json:"id_site"`
+	IDSiteOrganization string           `json:"id_site_organization"`
+	IDUser             string           `json:"id_user"`
+	IsDisable          int              `json:"is_disable"`
+	Name               string           `json:"name"`
+	Number             string           `json:"number"`
+	Site               SiteOrganization `json:"site"`
 }
 
 type Attachment struct {
@@ -92,6 +108,8 @@ type SiteOrganization struct {
 	Avatar                 asset  `json:"avatar"`
 	SmallCover             asset  `json:"small_cover"`
 	Cover                  asset  `json:"cover"`
+	Organization           string `json:"organization"`
+	TimeZone               string `json:"time_zone"`
 }
 
 type StatusCode struct {
