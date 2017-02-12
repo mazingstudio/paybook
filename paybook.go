@@ -93,10 +93,14 @@ type Transaction struct {
 	IDCurrency             string       `json:"id_currency"`
 	IsDisable              int          `json:"is_disable"`
 	Amount                 float64      `json:"amount"`
-	Currency               string       `json:"string"`
+	Currency               string       `json:"currency"`
+	Reference              interface{}  `json:"reference"`
+	Keywords               interface{}  `json:"keywords"`
+	Extra                  interface{}  `json:"extra"`
 	Attachments            []Attachment `json:"attachments"`
 	CreatedAt              *Time        `json:"dt_transaction"`
 	RefresedAt             *Time        `json:"dt_refresh"`
+	DisabledAt             *Time        `json:"dt_disable"`
 	Description            string       `json:"description"`
 }
 
