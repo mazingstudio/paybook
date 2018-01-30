@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -206,6 +205,28 @@ func (c *Client) CreateUser(user *User) (*User, error) {
 	return res.Response, nil
 }
 
+func (c *Client) Users(params url.Values) ([]User, error) {
+	res := struct {
+		Envelope
+		Response []User `json:"response,omitempty"`
+	}{}
+
+	err := c.get("/users", params, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	if !res.Status {
+		return nil, errors.New(*res.Message)
+	}
+
+	if len(res.Response) < 1 {
+		return nil, errors.New("empty result")
+	}
+
+	return res.Response, nil
+}
+
 func (c *Client) CreateSession(user *User) (*Session, error) {
 	res := struct {
 		Envelope
@@ -275,6 +296,18 @@ func (c *Client) Status(statusURL string, params url.Values) (StatusCodes, error
 		return nil, errors.New(*res.Message)
 	}
 
+	return res.Response, nil
+}
+
+func (c *Client) RemoveToken(token string) (bool, error) {
+	res := struct {
+		Envelope
+		Response bool `json:"response,omitempty"`
+	}{}
+	err := c.delete("/sessions/"+token, nil, &res)
+	if err != nil {
+		return false, err
+	}
 	return res.Response, nil
 }
 
@@ -353,7 +386,6 @@ func (c *Client) get(endpoint string, params url.Values, dest interface{}) error
 	if err != nil {
 		return err
 	}
-	log.Printf("GOT (%v): %v", endpoint, string(out))
 
 	if err := json.Unmarshal(out, dest); err != nil {
 		return err
@@ -377,7 +409,30 @@ func (c *Client) post(endpoint string, params url.Values, data interface{}, dest
 	if err != nil {
 		return err
 	}
-	log.Printf("GOT (%v): %v", endpoint, string(out))
+
+	if err := json.Unmarshal(out, dest); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) delete(endpoint string, params url.Values, dest interface{}) error {
+	req, err := http.NewRequest("DELETE", c.signEndpoint(endpoint, params), nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	out, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
 
 	if err := json.Unmarshal(out, dest); err != nil {
 		return err

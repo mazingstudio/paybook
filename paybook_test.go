@@ -30,6 +30,10 @@ func TestCreateUser(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
 	t.Logf("User: %#v", user)
+
+	users, err := client.Users(url.Values{"id_external": {user.ID}})
+	assert.NoError(t, err)
+	assert.NotNil(t, users)
 }
 
 func TestCreateEmptySession(t *testing.T) {
@@ -57,6 +61,10 @@ func TestCreateSession(t *testing.T) {
 	valid, err = client.ValidToken("WAKA")
 	assert.Error(t, err)
 	assert.False(t, valid)
+
+	removed, err := client.RemoveToken(session.Token)
+	assert.NoError(t, err)
+	assert.True(t, removed)
 }
 
 func TestGetSiteOrganizations(t *testing.T) {
